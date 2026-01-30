@@ -51,17 +51,6 @@ open scoped TensorProduct
 
 variable (R A L : Type*)
 
---delete this
-lemma residuePairing_finite_support [CommRing R] [AddCommGroup A] [SMulZeroClass A R]
-    [AddCommGroup L] [Module R L]
-    (Φ : LinearMap.BilinForm R L) (f g : A →₀ L) :
-    Finite (fun a ↦ a • (Φ (f (-a)) (g a))).support := by
-  refine Finite.Set.subset ((fun a ↦ (-a)) '' f.support) ?_
-  intro n hn
-  simp only [Set.image_neg_eq_neg, Set.mem_neg, SetLike.mem_coe, Finsupp.mem_support_iff]
-  contrapose! hn
-  simp [hn]
-
 namespace LieAlgebra
 
 variable [CommRing R] [LieRing L] [LieAlgebra R L]
