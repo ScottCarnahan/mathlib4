@@ -179,7 +179,7 @@ lemma finite_support_finsum_bracket [AddCommMonoid A] (x y : A →₀ L) :
   obtain ⟨a, hab, ha⟩ := exists_ne_zero_of_finsum_mem_ne_zero hb
   use a
   exact ⟨ha, hab⟩
--/
+
 
 theorem support_finsum_subset_image_support {α β M : Type*} [AddCommMonoid M] (f : α → β)
     (g : α → M) (hg : (Function.support g).Finite) :
@@ -224,7 +224,6 @@ lemma finsum_fiberwise_quotient {α M : Type*} [AddCommMonoid M] (r : Setoid α)
   exact fun y ↦ finsum_set_coe_eq_finsum_mem (Quotient.mk r ⁻¹' {y})
 --#find_home! finsum_fiberwise' --[Mathlib.Algebra.BigOperators.Finprod]
 
-/-
 /-- A LieRing structure on finsupp -/
 def finsuppLieRing' : LieRing (ℤ →₀ L) where
   bracket x y := Finsupp.ofSupportFinite
@@ -250,7 +249,6 @@ def finsuppLieRing' : LieRing (ℤ →₀ L) where
     ext
     simp [Finsupp.ofSupportFinite]
     sorry
--/
 
 /-- A Lie ring structure on finitely supported functions on a Lie algebra `L`. -/
 def finsuppLieRing [AddCommMonoid A] : LieRing (A →₀ L) where
@@ -300,7 +298,6 @@ def finsuppRestrictLieAlgebra [AddCommMonoid A] :
   letI := finsuppLieAlgebra R A L
   LieAlgebra.RestrictScalars.lieAlgebra R (AddMonoidAlgebra R A) (A →₀ L)
 
-/-!
 /-- The evaluation representation, given by composing a representation with the evaluation map
 `L[z,z^{-1}] → L` attached to a unit in `R`. -/
 --define eval (x : Units R) : (loopAlgebra R L) →ₗ⁅R⁆ L where
@@ -315,105 +312,84 @@ def finsuppRestrictLieAlgebra [AddCommMonoid A] :
 
 section CentralExt
 
-lemma residuePairing_finite_support [AddCommGroup A] [SMulZeroClass A R]
-    (Φ : LinearMap.BilinForm R L) (f g : A →₀ L) :
-    Finite (fun n ↦ n • (Φ (f (-n)) (g n))).support := by
-  refine Finite.Set.subset ((fun n ↦ (-n)) '' f.support) ?_
-  intro n hn
-  simp only [Set.image_neg_eq_neg, Set.mem_neg, SetLike.mem_coe, Finsupp.mem_support_iff]
-  contrapose! hn
-  simp [hn]
-
-/-- The residue pairing on finitely supported functions.  When the functions are viewed as Laurent
-polynomials with coefficients in `L`, the pairing is given by `(f, g) ↦ Res f dg`. -/
+open Finsupp in
+/-- The residue pairing on the loop algebra.  When `A = ℤ` and the elements are viewed as Laurent
+polynomials with coefficients in `L`, the pairing is interpreted as `(f, g) ↦ Res f dg`. -/
 @[simps]
-def residuePairingFinsupp [AddCommGroup A] [DistribSMul A R] [SMulCommClass A R R]
+def residuePairing [AddCommGroup A] [DistribSMul A R] [SMulCommClass A R R]
     (Φ : LinearMap.BilinForm R L) :
-    (A →₀ L) →ₗ[R] (A →₀ L) →ₗ[R] R where
-  toFun f := {
-    toFun := fun g => ∑ᶠ n, n • (Φ (f (-n)) (g n))
-    map_add' x y := by
-      rw [← finsum_add_distrib (residuePairing_finite_support R A L Φ f x)
-        (residuePairing_finite_support R A L Φ f y), finsum_congr]
-      intro n
-      simp
-    map_smul' r x := by
-      rw [RingHom.id_apply, smul_finsum' _ (residuePairing_finite_support R A L Φ f x),
-        finsum_congr _]
-      intro n
-      simp [mul_smul_comm] }
-  map_add' x y := by
-    ext n z
-    simp only [LinearMap.coe_comp, LinearMap.coe_mk, AddHom.coe_mk, Function.comp_apply,
-      Finsupp.lsingle_apply, LinearMap.add_apply]
-    rw [← finsum_add_distrib (residuePairing_finite_support R A L Φ x _)
-      (residuePairing_finite_support R A L Φ y _), finsum_congr]
-    intro m
-    simp
-  map_smul' r x := by
-    ext n y
-    simp only [Finsupp.coe_smul, LinearMap.coe_comp, LinearMap.smul_apply, LinearMap.coe_mk,
-      AddHom.coe_mk, Function.comp_apply, RingHom.id_apply]
-    rw [smul_finsum' _ (residuePairing_finite_support R A L Φ x _), finsum_congr]
-    intro k
-    simp [mul_smul_comm]
+    LinearMap.BilinForm R (loopAlgebra R A L) where
+  toFun f :=
+    letI F := toFinsupp R A L
+    { toFun g := (F g).sum fun a v ↦ a • Φ (F f (-a)) v
+      map_add' x y := by
+        classical
+        let u : Finset A := (F x).support ∪ (F y).support
+        have hu₁ : (F x).support ⊆ u := Finset.subset_union_left
+        have hu₂ : (F y).support ⊆ u := Finset.subset_union_right
+        have hu₃ : (F (x + y)).support ⊆ u := fun a ha ↦ by
+          replace ha : F x a + F y a ≠ 0 := by simpa using ha
+          grind
+        rw [sum_of_support_subset _ hu₃ _ (by simp), sum_of_support_subset _ hu₁ _ (by simp),
+          sum_of_support_subset _ hu₂ _ (by simp)]
+        simp [Finset.sum_add_distrib, u]
+      map_smul' r x := by
+        rw [map_smul, sum_of_support_subset _ support_smul _ (by simp), sum, Finset.smul_sum]
+        simp [-smul_eq_mul, smul_comm] }
+  map_add' x y := by ext; simp [sum_add]
+  map_smul' r x := by ext; simp [-smul_eq_mul, smul_comm]
 
-/-- A 2-cochain on a loop algebra given by an invariant bilinear form. The alternating condition
-follows from the fact that Res f df = 0 -/
+open LieModule in
+/-- A 2-cochain on a loop algebra given by an invariant bilinear form. When `A = ℤ`, the alternating
+condition amounts to the fact that Res f df = 0. -/
 def twoCochainOfBilinear [CommRing A] [IsAddTorsionFree R] [Algebra A R]
-    (Φ : LinearMap.BilinForm R L) (hΦ : LinearMap.BilinForm.IsSymm Φ) :
-    LieModule.Cohomology.twoCochain R (loopAlgebra R A L)
-      (TrivialLieModule R (loopAlgebra R A L) R) where
-  val := (((residuePairingFinsupp R A L Φ).compr₂
-    ((TrivialLieModule.equiv R (loopAlgebra R A L) R).symm.toLinearMap)).compl₂
-    (toFinsupp R A L).toLinearMap).comp (toFinsupp R A L).toLinearMap
+    (Φ : LinearMap.BilinForm R L) (hΦ : Φ.IsSymm) :
+    Cohomology.twoCochain R (loopAlgebra R A L) (TrivialLieModule R (loopAlgebra R A L) R) where
+  val := (residuePairing R A L Φ).compr₂ (TrivialLieModule.equiv R (loopAlgebra R A L) R).symm
   property := by
-    simp only [LieModule.Cohomology.mem_twoCochain_iff]
-    intro f
-    simp only [LinearMap.coe_comp, LinearEquiv.coe_coe, Function.comp_apply,
-      LinearMap.compl₂_apply, LinearMap.compr₂_apply, residuePairingFinsupp_apply_apply,
-      EmbeddingLike.map_eq_zero_iff]
-    set φ := fun n ↦ n • (Φ (((toFinsupp R A L) f) (-n))) (((toFinsupp R A L) f) n) with hφ
-    have : Function.Odd φ := by
-      intro n
-      simp [hφ, neg_neg, hΦ.eq (toFinsupp R A L f n) (toFinsupp R A L f (-n))]
-    simpa [neg_eq_self, finsum_neg_distrib, funext this] using finsum_comp_equiv (.neg A) (f := φ)
+    refine Cohomology.mem_twoCochain_iff.mpr fun f ↦ ?_
+    letI F := toFinsupp R A L
+    suffices ((F f).sum fun a v ↦ a • Φ (F f (-a)) v) = 0 by simpa
+    classical
+    set s := (F f).support ∪ (F f).support.image (Equiv.neg A) with hs
+    have hs' : (F f).support ⊆ s := Finset.subset_union_left
+    rw [Finsupp.sum_of_support_subset _ hs' _ (by simp)]
+    refine Function.Odd.finset_sum_eq_zero (fun n ↦ by simp [hΦ.eq]) (Finset.map_eq_of_subset ?_)
+    intro x hx
+    rw [Finset.mem_union]
+    replace hx : -x ∈ (F f).support ∨ -x ∈ (F f).support.image Neg.neg := by simpa [hs] using hx
+    obtain (h | h) := hx
+    · exact Or.inr <| Finset.mem_image.mpr ⟨-x, by simp [h]⟩
+    · exact Or.inl <| by simpa using h
 
 @[simp]
 lemma twoCochainOfBilinear_apply_apply [CommRing A] [IsAddTorsionFree R] [Algebra A R]
-    (Φ : LinearMap.BilinForm R L) (hΦ : LinearMap.BilinForm.IsSymm Φ)
-    (x y : loopAlgebra R A L) :
+(Φ : LinearMap.BilinForm R L) (hΦ : Φ.IsSymm) (x y : loopAlgebra R A L) :
     twoCochainOfBilinear R A L Φ hΦ x y =
-      (TrivialLieModule.equiv R (loopAlgebra R A L) R).symm
-        ((residuePairingFinsupp R A L Φ) (toFinsupp R A L x) (toFinsupp R A L y)) :=
+      (TrivialLieModule.equiv R (loopAlgebra R A L) R).symm (residuePairing R A L Φ x y) :=
   rfl
 
+open LieModule in
 /-- A 2-cocycle on a loop algebra given by an invariant bilinear form. -/
 @[simps]
-def twoCocycle_of_Bilinear [CommRing A] [IsAddTorsionFree R] [Algebra A R]
-    (Φ : LinearMap.BilinForm R L) (hΦ : LinearMap.BilinForm.lieInvariant L Φ)
-    (hΦs : LinearMap.BilinForm.IsSymm Φ) :
-    LieModule.Cohomology.twoCocycle R (loopAlgebra R A L)
-      (TrivialLieModule R (loopAlgebra R A L) R) where
+def twoCocycleOfBilinear [CommRing A] [IsAddTorsionFree R] [Algebra A R]
+    (Φ : LinearMap.BilinForm R L) (hΦ : Φ.lieInvariant L) (hΦs : Φ.IsSymm) :
+    Cohomology.twoCocycle R (loopAlgebra R A L) (TrivialLieModule R (loopAlgebra R A L) R) where
   val := twoCochainOfBilinear R A L Φ hΦs
   property := by
-    refine (LieModule.Cohomology.mem_twoCocycle_iff R (loopAlgebra R A L)
-            (TrivialLieModule R (loopAlgebra R A L) R) (twoCochainOfBilinear R A L Φ hΦs)).mpr ?_
+    apply (LieModule.Cohomology.mem_twoCocycle_iff ..).mpr
     ext a x b y c z
-    simp only [LinearMap.coe_comp, Function.comp_apply, AddMonoidAlgebra.lsingle_apply,
-      TensorProduct.AlgebraTensorModule.curry_apply, LinearMap.restrictScalars_self,
-      TensorProduct.curry_apply, LieModule.Cohomology.d₂₃_apply, twoCochainOfBilinear_apply_apply,
-      toFinsupp_single_tmul, residuePairingFinsupp_apply_apply, trivial_lie_zero, sub_self,
-      add_zero, ExtendScalars.bracket_tmul, AddMonoidAlgebra.single_mul_single, mul_one, zero_sub,
-      LinearMap.zero_apply]
-    rw [sub_eq_zero, neg_add_eq_iff_eq_add, ← LinearEquiv.map_add, EquivLike.apply_eq_iff_eq,
-      finsum_eq_single _ b (fun _ h ↦ by simp [h]), finsum_eq_single _ c (fun _ h ↦ by simp [h]),
-      finsum_eq_single _ a (fun _ h ↦ by simp [h])]
-    by_cases hz : a + b + c = 0
-    · rw [show a + b = -c by grind, show a + c = -b by grind, show b + c = -a by grind]
-      simp only [Finsupp.single_eq_same]
-      rw [hΦ, hΦs.eq z ⁅x, y⁆, hΦ y, ← lie_skew y x, hΦs.eq z, LinearMap.BilinForm.neg_left,
-        neg_neg, show b = -(a + c) by grind, neg_smul, smul_neg, neg_neg, add_smul, add_comm]
+    suffices
+        b • Φ (Finsupp.single (a + c) ⁅x, z⁆ (-b)) y =
+        c • Φ (Finsupp.single (a + b) ⁅x, y⁆ (-c)) z +
+        a • Φ (Finsupp.single (b + c) ⁅y, z⁆ (-a)) x by
+      simpa [sub_eq_zero, neg_add_eq_iff_eq_add, ← LinearEquiv.map_add, -LinearEquiv.map_add]
+    by_cases h0 : a + b + c = 0
+    · suffices b • Φ ⁅x, z⁆ y = c • Φ ⁅x, y⁆ z + a • Φ ⁅y, z⁆ x by
+        simpa only [show a + b = -c by grind, show a + c = -b by grind, show b + c = -a by grind,
+          Finsupp.single_eq_same]
+      rw [hΦ, hΦs.eq z ⁅x, y⁆, hΦ y, ← lie_skew y x, hΦs.eq z, Φ.neg_left, neg_neg,
+        show b = -(a + c) by grind, neg_smul, smul_neg, neg_neg, add_smul, add_comm]
     · simp [Finsupp.single_eq_of_ne (a := a + c) (a' := -b) (by grind),
         Finsupp.single_eq_of_ne (a := a + b) (a' := -c) (by grind),
         Finsupp.single_eq_of_ne (a := b + c) (a' := -a) (by grind)]
@@ -442,7 +418,7 @@ def extension [CommRing A] [IsAddTorsionFree R] [Algebra A R]
     (Φ : LinearMap.BilinForm R L) (hΦ : LinearMap.BilinForm.lieInvariant L Φ)
     (hΦs : LinearMap.BilinForm.IsSymm Φ) :
     LieAlgebra.Extension R (TrivialLieModule R (loopAlgebra R A L) R) (loopAlgebra R A L) :=
-  Extension.ofTwoCocycle (twoCocycle_of_Bilinear R A L Φ hΦ hΦs)
+  Extension.ofTwoCocycle (twoCocycleOfBilinear R A L Φ hΦ hΦs)
 
 end CentralExt
 
