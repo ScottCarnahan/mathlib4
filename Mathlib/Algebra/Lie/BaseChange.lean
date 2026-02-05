@@ -124,9 +124,6 @@ instance instLieModule : LieModule A (A ⊗[R] L) (A ⊗[R] M) where
   smul_lie t x m := by simp only [bracket_def, map_smul, LinearMap.smul_apply]
   lie_smul _ _ _ := map_smul _ _ _
 
-instance instBaseLieAlgebra : LieAlgebra R (A ⊗[R] L) where
-  lie_smul r x y := by simp [bracket_def]
-
 /-- The Lie algebra homomorphism induced by an algebra map. -/
 def map {R A B L L' : Type*} [CommRing R] [CommRing A] [Algebra R A] [CommRing B] [Algebra R B]
     [LieRing L] [LieAlgebra R L] [LieRing L'] [LieAlgebra R L'] (f : A →ₐ[R] B) (g : L →ₗ⁅R⁆ L') :
