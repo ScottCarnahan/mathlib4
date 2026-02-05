@@ -67,7 +67,7 @@ namespace LoopAlgebra
 @[simps!]
 def mapMonomialLieHom {A} {A' : Type*} [AddCommMonoid A] [AddCommMonoid A'] (f : A →+ A') :
     loopAlgebra R A L →ₗ⁅R⁆ loopAlgebra R A' L :=
-  LieAlgebra.ExtendScalars.lieHom R L (AddMonoidAlgebra.mapDomainAlgHom R R f)
+  LieAlgebra.ExtendScalars.map (AddMonoidAlgebra.mapDomainAlgHom R R f) LieHom.id
 
 /-
 lemma mapMonomialLieHom_single {A} {A' : Type*} [AddCommMonoid A] [AddCommMonoid A'] (f : A →+ A')
@@ -423,14 +423,21 @@ def extension [CommRing A] [IsAddTorsionFree R] [Algebra A R]
 end CentralExt
 
 section PositiveEnergy
-
 /-
+
+Make this more general - two submonoids that don't generate nontrivial units?
+
 lemma twoCocycle_apply_apply_zero [IsAddTorsionFree R] (Φ : LinearMap.BilinForm R L)
     (hΦ : LinearMap.BilinForm.lieInvariant L Φ)
-    (hΦs : LinearMap.BilinForm.IsSymm Φ) (c : R) (p q : loopAlgebra R ℕ L) :
-  ((LieAlgebra.LoopAlgebra.extension R ℤ L Φ hΦ hΦs).twoCocycleOf
-    (LieAlgebra.Extension.section_proj_leftInverse c)).1 (LieAlgebra.ExtendScalars.lieHom R L p)
-    (LieAlgebra.ExtendScalars.lieHom R L q) = 0 : by
+    (hΦs : LinearMap.BilinForm.IsSymm Φ) (p q : loopAlgebra R ℕ L) :
+    ((LieAlgebra.LoopAlgebra.extension R ℤ L Φ hΦ hΦs).twoCocycleOf
+    (LieAlgebra.Extension.section_proj_leftInverse (twoCocycleOfBilinear R ℤ L Φ hΦ hΦs))).1
+    ((LieAlgebra.ExtendScalars.map (AddMonoidAlgebra.mapDomainAlgHom R R (Nat.castAddMonoidHom ℤ))
+      LieHom.id) p)
+    ((LieAlgebra.ExtendScalars.map (AddMonoidAlgebra.mapDomainAlgHom R R (Nat.castAddMonoidHom ℤ))
+      LieHom.id) q) = 0 := by
+
+  sorry
 
 
 
