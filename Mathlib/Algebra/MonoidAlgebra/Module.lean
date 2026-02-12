@@ -9,8 +9,6 @@ public import Mathlib.Algebra.Module.BigOperators
 public import Mathlib.Algebra.MonoidAlgebra.Lift
 public import Mathlib.LinearAlgebra.Basis.Defs
 
-import Mathlib.LinearAlgebra.Finsupp.Supported
-
 /-!
 # Module structure on monoid algebras
 
@@ -65,18 +63,14 @@ instance faithfulSMul [Semiring k] [SMulZeroClass R k] [FaithfulSMul R k] [Nonem
     FaithfulSMul R k[G] :=
   Finsupp.faithfulSMul
 
-/-- A basis of a monoid algebra by singles. -/
-@[to_additive /-- A basis of an additive monoid algebra by singles. -/]
-def basis (k R) [Semiring k] : Module.Basis R k (MonoidAlgebra k R) :=
-  Module.Basis.ofRepr ((LinearEquiv.refl k (R →₀ k)))
+/-- The standard basis for a monoid algebra. -/
+@[to_additive /-- The standard basis for an additive monoid algebra. -/]
+def basis (R k) [Semiring k] : Module.Basis R k (MonoidAlgebra k R) where
+  repr := LinearEquiv.refl k (R →₀ k)
 
-@[simp]
-lemma basis_apply (k) [Semiring k] (r : R) : basis k R r = MonoidAlgebra.single r (1 : k) := by
-  rfl
-
-@[simp]
-lemma _root_.AddMonoidAlgebra.basis_apply (k) [Semiring k] (r : R) :
-    AddMonoidAlgebra.basis k R r = AddMonoidAlgebra.single r (1 : k) := by
+@[to_additive (dont_translate := k) (attr := simp)]
+lemma basis_apply (k) [Semiring k] (r : R) :
+    MonoidAlgebra.basis R k r = MonoidAlgebra.single r 1 :=
   rfl
 
 /-- This is not an instance as it conflicts with `MonoidAlgebra.distribMulAction` when `G = kˣ`.

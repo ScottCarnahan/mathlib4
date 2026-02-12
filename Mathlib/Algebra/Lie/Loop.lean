@@ -33,8 +33,13 @@ flexibility. The classical loop algebra is then written `loopAlgebra R ℤ L`.
 
 ## Main definitions
 * `LieAlgebra.loopAlgebra`: The tensor product of a Lie algebra with an `AddMonoidAlgebra`.
-* `LieAlgebra.loopAlgebra.twoCochain_of_Bilinear`: The 2-cochain for a loop algebra with trivial
+* `LieAlgebra.loopAlgebra.toFinsupp`: A linear equivalence from the loop algebra to the space of
+  finitely supported functions.
+* `LieAlgebra.loopAlgebra.twoCochainOfBilinear`: The 2-cochain for a loop algebra with trivial
   coefficients attached to a symmetric bilinear form on the base Lie algebra.
+* `LieAlgebra.loopAlgebra.twoCocycleOfBilinear`: The 2-cocycle for a loop algebra with trivial
+  coefficients attached to a symmetric invariant bilinear form on the base Lie algebra.
+
 ## TODO
 * Evaluation representations
 * Construction of central extensions from invariant forms.
@@ -364,7 +369,7 @@ def twoCochainOfBilinear [CommRing A] [IsAddTorsionFree R] [Algebra A R]
 
 @[simp]
 lemma twoCochainOfBilinear_apply_apply [CommRing A] [IsAddTorsionFree R] [Algebra A R]
-(Φ : LinearMap.BilinForm R L) (hΦ : Φ.IsSymm) (x y : loopAlgebra R A L) :
+    (Φ : LinearMap.BilinForm R L) (hΦ : Φ.IsSymm) (x y : loopAlgebra R A L) :
     twoCochainOfBilinear R A L Φ hΦ x y =
       (TrivialLieModule.equiv R (loopAlgebra R A L) R).symm (residuePairing R A L Φ x y) :=
   rfl

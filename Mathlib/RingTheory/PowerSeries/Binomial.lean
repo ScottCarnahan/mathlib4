@@ -36,7 +36,7 @@ commutative binomial ring `R`.
 
 @[expose] public section
 
-open Finset BigOperators
+open Finset
 
 variable {Γ R A : Type*}
 
