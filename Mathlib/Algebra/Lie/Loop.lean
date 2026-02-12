@@ -111,10 +111,11 @@ lemma toFinsupp_monomial_apply (a : A) (x : L) :
   rw [← Function.comp_apply (f := toFinsupp R A L), ← toFinsupp_comp_monomial R]
 
 @[simp]
-lemma toFinsupp_single_tmul (c : A) (z : L) :
-    ((toFinsupp R A L) (AddMonoidAlgebra.single c 1 ⊗ₜ[R] z)) = Finsupp.single c z := by
+lemma toFinsupp_single_tmul (c : A) (z : L) (r : R) :
+    ((toFinsupp R A L) (AddMonoidAlgebra.single c r ⊗ₜ[R] z)) = Finsupp.single c (r • z) := by
   ext a
-  rw [← addEquiv_monomial, toFinsupp_monomial_apply]
+  by_cases h : c = a <;> simp [toFinsupp, h, AddMonoidAlgebra.basis, AddMonoidAlgebra.single,
+    LinearEquiv.refl, LinearMap.id]
 
 lemma monomial_injective (a : A) : Function.Injective (monomial R L a) := by
   rw [← toFinsupp_symm_single]
@@ -137,7 +138,6 @@ lemma add_finsupp {α A : Type*} [AddMonoid A] {f g : α → A} (hf : Finite f.s
   ext; simp [Finsupp.add_apply, Finsupp.ofSupportFinite_coe]
 --#find_home! add_finsupp --[Mathlib.Algebra.Group.Finsupp]
 
-/-- Generalize: replace ℤ with an abelian group -/
 lemma finite_support_bracket [AddCancelCommMonoid A] (a : A) (x y : A →₀ L) :
     Finite (fun (k : Set.addAntidiagonal Set.univ Set.univ a) ↦ ⁅x k.1.1, y k.1.2⁆).support := by
   refine Set.Finite.of_finite_image (f := fun k ↦ k.1.1) ?_ ?_
@@ -420,27 +420,98 @@ def extension [CommRing A] [IsAddTorsionFree R] [Algebra A R]
     LieAlgebra.Extension R (TrivialLieModule R (loopAlgebra R A L) R) (loopAlgebra R A L) :=
   Extension.ofTwoCocycle (twoCocycleOfBilinear R A L Φ hΦ hΦs)
 
+--letI _ := Extension.ringModuleOf (extension R A L Φ hΦ hΦs)
+--    have this := Extension.lieModuleOf (extension R A L Φ hΦ hΦs)
+
+@[simp]
+lemma twoCocycleOf_extension [CommRing A] [IsAddTorsionFree R] [Algebra A R]
+    (Φ : LinearMap.BilinForm R L) (hΦ : LinearMap.BilinForm.lieInvariant L Φ)
+    (hΦs : LinearMap.BilinForm.IsSymm Φ) :
+    ((LieAlgebra.LoopAlgebra.extension R A L Φ hΦ hΦs).twoCocycleOf
+    (LieAlgebra.Extension.section_proj_leftInverse (twoCocycleOfBilinear R A L Φ hΦ hΦs))).1 =
+    twoCocycleOfBilinear R A L Φ hΦ hΦs := by
+  dsimp only [extension]
+  rw [Extension.twoCocycleOf_ofTwoCocycle]
+
 end CentralExt
 
 section PositiveEnergy
-/-
 
-Make this more general - two submonoids that don't generate nontrivial units?
+variable [CommRing A] [Algebra A R]
+
+lemma twoCocycle_apply_single_single [IsAddTorsionFree R] (Φ : LinearMap.BilinForm R L)
+    (hΦ : LinearMap.BilinForm.lieInvariant L Φ)
+    (hΦs : LinearMap.BilinForm.IsSymm Φ) {a b : A} (h : -b ≠ a) (r s : R) (x y : L) :
+    ((LieAlgebra.LoopAlgebra.extension R A L Φ hΦ hΦs).twoCocycleOf
+    (LieAlgebra.Extension.section_proj_leftInverse (twoCocycleOfBilinear R A L Φ hΦ hΦs))).1
+    ((AddMonoidAlgebra.single a r) ⊗ₜ x) ((AddMonoidAlgebra.single b s) ⊗ₜ y) = 0 := by
+  simp [twoCocycleOf_extension, Finsupp.single_eq_of_ne h]
+
+@[to_additive]
+theorem _root_.Finsupp.prod_eq_one {α M N : Type*} [Zero M] [CommMonoid N] {f : α →₀ M}
+    {g : α → M → N} (h₀ : ∀ b, f b ≠ 0 → g b (f b) = 1) :
+    f.prod g = 1 := by
+  exact Finset.prod_eq_one fun b hb ↦ h₀ b (Finsupp.mem_support_iff.mp hb)
+--#find_home! Finsupp.prod_eq_one --[Mathlib.Algebra.BigOperators.Finsupp.Basic]
+
+lemma twoCocycle_apply_single [IsAddTorsionFree R] (Φ : LinearMap.BilinForm R L)
+    (hΦ : LinearMap.BilinForm.lieInvariant L Φ)
+    (hΦs : LinearMap.BilinForm.IsSymm Φ) {a : A} {p : loopAlgebra R A L}
+    (h : ∀ b ∈ (toFinsupp R A L p).support, -b ≠ a) (r : R) (x : L) :
+    ((LieAlgebra.LoopAlgebra.extension R A L Φ hΦ hΦs).twoCocycleOf
+    (LieAlgebra.Extension.section_proj_leftInverse (twoCocycleOfBilinear R A L Φ hΦ hΦs))).1
+    ((AddMonoidAlgebra.single a r) ⊗ₜ x) p = 0 := by
+  induction p using TensorProduct.induction_on with
+  | zero => simp
+  | tmul x y =>
+    induction x using AddMonoidAlgebra.induction_linear with
+    | zero => simp
+    | add _ _ _ _ =>
+      simp only [twoCocycleOf_extension, twoCocycleOfBilinear_coe, twoCochainOfBilinear_apply_apply,
+        residuePairing_apply_apply, Finsupp.sum, toFinsupp_single_tmul, map_sum]
+      exact Finset.sum_eq_zero fun b hb ↦ (by simp [Finsupp.single_eq_of_ne (fun x ↦ h b hb x)])
+    | single m r =>
+      have : r • y ≠ 0 → -m ≠ a := by simpa using h m
+      simp only [twoCocycleOf_extension, twoCocycleOfBilinear_coe, twoCochainOfBilinear_apply_apply,
+        residuePairing_apply_apply, toFinsupp_single_tmul, map_zero, smul_zero,
+        Finsupp.sum_single_index, map_smul, EmbeddingLike.map_eq_zero_iff]
+      by_cases h : -m = a
+      · simp only [h, Finsupp.single_eq_same, map_smul, LinearMap.smul_apply]
+        rw [smul_comm r, ← map_smul]
+        simp [Function.notMem_support.mp fun a ↦ this a h]
+      · simp [h]
+  | add u _ _ _ =>
+    induction u with
+    | zero => simp_all
+    | tmul _ _ =>
+      simp only [twoCocycleOf_extension, twoCocycleOfBilinear_coe, twoCochainOfBilinear_apply_apply,
+        residuePairing_apply_apply, toFinsupp_single_tmul, Finsupp.sum]
+      exact Finset.sum_eq_zero fun b hb ↦ by simp [Finsupp.single_eq_of_ne (h b hb)]
+    | add _ _ _ _ =>
+      simp only [twoCocycleOf_extension, twoCocycleOfBilinear_coe, twoCochainOfBilinear_apply_apply,
+        residuePairing_apply_apply, toFinsupp_single_tmul, Finsupp.sum]
+      exact Finset.sum_eq_zero fun b hb ↦ by simp [Finsupp.single_eq_of_ne (h b hb)]
+
+--Make this more general - two submonoids that don't generate nontrivial units?
 
 lemma twoCocycle_apply_apply_zero [IsAddTorsionFree R] (Φ : LinearMap.BilinForm R L)
     (hΦ : LinearMap.BilinForm.lieInvariant L Φ)
-    (hΦs : LinearMap.BilinForm.IsSymm Φ) (p q : loopAlgebra R ℕ L) :
-    ((LieAlgebra.LoopAlgebra.extension R ℤ L Φ hΦ hΦs).twoCocycleOf
-    (LieAlgebra.Extension.section_proj_leftInverse (twoCocycleOfBilinear R ℤ L Φ hΦ hΦs))).1
-    ((LieAlgebra.ExtendScalars.map (AddMonoidAlgebra.mapDomainAlgHom R R (Nat.castAddMonoidHom ℤ))
-      LieHom.id) p)
-    ((LieAlgebra.ExtendScalars.map (AddMonoidAlgebra.mapDomainAlgHom R R (Nat.castAddMonoidHom ℤ))
-      LieHom.id) q) = 0 := by
+    (hΦs : LinearMap.BilinForm.IsSymm Φ) (p q : loopAlgebra R A L)
+    (hpq : ∀ a ∈ (toFinsupp R A L p).support, ∀ b ∈ (toFinsupp R A L q).support, -b ≠ a) :
+    ((LieAlgebra.LoopAlgebra.extension R A L Φ hΦ hΦs).twoCocycleOf
+    (LieAlgebra.Extension.section_proj_leftInverse (twoCocycleOfBilinear R A L Φ hΦ hΦs))).1
+    p q = 0 := by
+  simp only [twoCocycleOf_extension, twoCocycleOfBilinear_coe, twoCochainOfBilinear_apply_apply,
+    residuePairing_apply_apply, EmbeddingLike.map_eq_zero_iff]
+  rw [Finsupp.sum_eq_zero]
+  intro a ha
+  contrapose! hpq
+  use -a
+  exact ⟨by contrapose! hpq; simp [Finsupp.notMem_support_iff.mp hpq],
+      Exists.intro a (by simp [ha])⟩
 
-  sorry
-
-
-
+--use LieRingModule.compLieHom
+/-
 Need a class for graded representations.
 Need a class for "has central charge"
 

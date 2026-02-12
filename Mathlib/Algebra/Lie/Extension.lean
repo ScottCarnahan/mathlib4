@@ -167,6 +167,7 @@ instance : Module R (ofTwoCocycle c) := (ofProd c).symm.module R
 
 @[simp] lemma of_zero : ofProd c (0 : L × M) = 0 := rfl
 @[simp] lemma of_add (x y : L × M) : ofProd c (x + y) = ofProd c x + ofProd c y := rfl
+@[simp] lemma of_sub (x y : L × M) : ofProd c (x - y) = ofProd c x - ofProd c y := rfl
 @[simp] lemma of_smul (r : R) (x : L × M) : (ofProd c) (r • x) = r • ofProd c x := rfl
 
 @[simp] lemma of_symm_zero : (ofProd c).symm (0 : ofTwoCocycle c) = 0 := rfl
@@ -298,7 +299,7 @@ lemma bracket (x y : (ofTwoCocycle c).L) :
   rfl
 
 @[simp]
-lemma ofTwoCocycle_incl_apply (x : M) : (ofTwoCocycle c).incl x = ⟨(0, x)⟩ :=
+lemma ofTwoCocycle_incl_apply (x : M) : (ofTwoCocycle c).incl x = (ofAlg c) (ofProd c (0, x)) :=
   rfl
 
 @[simp]
@@ -340,6 +341,15 @@ noncomputable def toKer (E : Extension R M L) :
 
 @[simp] lemma lie_toKer_apply (E : Extension R M L) (x : M) (y : E.L) :
     ⁅y, (E.toKer x : E.L)⁆ = ⁅y, E.incl x⁆ := by
+  rfl
+
+@[simp]
+lemma toKer_coe (E : Extension R M L) (x : M) :
+    E.toKer x = E.incl x :=
+  rfl
+
+lemma ofAlg_ofProd [LieRingModule L M] [LieModule R L M] [IsLieAbelian M] (c : twoCocycle R L M)
+    (x : M) : (ofAlg c) (ofProd c (0, x)) = (ofTwoCocycle c).incl x  := by
   rfl
 
 instance [IsLieAbelian M] (E : Extension R M L) : IsLieAbelian E.proj.ker :=
@@ -458,6 +468,22 @@ lemma twoCocycleOf_bracket [IsLieAbelian M] (E : Extension R M L) {s : L →ₗ[
     (hs : LeftInverse E.proj s) (x y : L) :
     ⁅s x, s y⁆ = s ⁅x, y⁆ + E.toKer ((E.twoCocycleOf hs).1 x y) := by
   simp
+
+@[simp]
+lemma twoCocycleOf_ofTwoCocycle [LieRingModule L M] [LieModule R L M] [IsLieAbelian M]
+    (c : twoCocycle R L M) :
+    (twoCocycleOf (ofTwoCocycle c) (section_proj_leftInverse c)).1 = c := by
+  ext x y
+  simp only [twoCocycleOf_coe_coe, LinearMap.compr₂_apply, LinearMap.coe_mk,
+    section_ofTwoCocycle_apply, AddHom.coe_mk, LinearEquiv.coe_coe, LieEquiv.coe_toLinearEquiv]
+  refine (LinearEquiv.symm_apply_eq (ofTwoCocycle c).toKer.toLinearEquiv).mpr ?_
+  refine (Subtype.coe_eq_of_eq_mk ?_).symm
+  rw [bracket]
+  simp only [LieEquiv.coe_toLinearEquiv, toKer_coe, ofTwoCocycle_incl_apply,
+    LieEquiv.symm_apply_apply]
+  rw [← map_sub]
+  refine DFunLike.congr rfl ?_
+  simp [bracket_ofTwoCocycle, ← of_sub]
 
 /- The equivalence between the range of the inclusion and the source.
 def sectLeft (E : Extension R N M) : E.incl.range ≃ₗ[R] N :=
