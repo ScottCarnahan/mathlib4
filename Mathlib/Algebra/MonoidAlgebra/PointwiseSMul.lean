@@ -9,10 +9,10 @@ public import Mathlib.Algebra.MonoidAlgebra.Defs
 public import Mathlib.Data.Set.SMulAntidiagonal
 
 /-!
-# Scalar multiplication by monoid rings on formal functions.
-Given sets `G` and `P`, with a left-cancellative scalar-multiplication of `G` on `P`, together with
-a module `V` over a semiring `R`, we define a convolution action of the monoid algebra `R[G]` on the
-set of functions `P → V`.
+# Scalar multiplication by (additive) monoid rings on formal functions.
+Given sets `G` and `P`, with a left-cancellative scalar-multiplication (or vector-addition) of `G`
+on `P`, together with a module `V` over a semiring `R`, we define a convolution action of the monoid
+algebra `R[G]` on the set of functions `P → V`.
 
 ## Definitions
 * MonoidAlgebra.smulAntidiagonal : The finset of pairs, whose parts lie in the support of specified
@@ -36,17 +36,17 @@ theorem finite_smulAntidiagonal [SMul G P] [IsLeftCancelSMul G P] [Semiring R] [
     (Set.smulAntidiagonal (SetLike.coe f.support) x.support p).Finite := by
   refine Set.Finite.of_injOn (t := SetLike.coe f.support) (fun _ ⟨h, _⟩ ↦ h) ?_
     f.support.finite_toSet
-  · intro _ ⟨_, _, h13⟩ gh' ⟨_, _, h23⟩ h
-    rw [h, ← h23] at h13
-    exact Prod.ext h (IsLeftCancelSMul.left_cancel gh'.1 _ _ h13)
+  intro _ ⟨_, _, hp⟩ gp ⟨_, _, hgp⟩ h
+  rw [h, ← hgp] at hp
+  exact Prod.ext h (IsLeftCancelSMul.left_cancel gp.1 _ _ hp)
 
-/-- The finset of pairs, whose parts like in the support of specified functions, that vector-add to
+/-- The finset of pairs, whose parts lie in the support of specified functions, that vector-add to
 a given element. -/
-@[to_additive /-- The finset of pairs, whose parts like in the support of specified functions, that
+@[to_additive /-- The finset of pairs, whose parts lie in the support of specified functions, that
 scalar-multiply to a given element. -/]
 def smulAntidiagonal [SMul G P] [IsLeftCancelSMul G P] [Semiring R] [Zero V]
-    (f : MonoidAlgebra R G) (x : P → V) (p : P) :
-    Finset (G × P) := (f.finite_smulAntidiagonal x p).toFinset
+    (f : MonoidAlgebra R G) (x : P → V) (p : P) : Finset (G × P) :=
+  (f.finite_smulAntidiagonal x p).toFinset
 
 @[to_additive]
 theorem mem_smulAntidiagonal_iff [SMul G P] [IsLeftCancelSMul G P] [Semiring R] [Zero V]
@@ -67,12 +67,12 @@ monoid algebra on the set of formal functions. -/]
 scoped instance [SMul G P] [IsLeftCancelSMul G P] [Semiring R] [AddCommMonoid V]
     [SMulWithZero R V] :
     SMul (MonoidAlgebra R G) (P → V) where
-  smul f x p := ∑ G ∈ smulAntidiagonal f x p, f G.1 • x G.2
+  smul f x p := ∑ gh ∈ smulAntidiagonal f x p, f gh.1 • x gh.2
 
 @[to_additive (dont_translate := R)]
 theorem smul_eq [SMul G P] [IsLeftCancelSMul G P] [Semiring R] [AddCommMonoid V] [SMulWithZero R V]
     (f : MonoidAlgebra R G) (x : P → V) (p : P) :
-    (f • x) p = ∑ G ∈ smulAntidiagonal f x p, f G.1 • x G.2 := rfl
+    (f • x) p = ∑ gh ∈ smulAntidiagonal f x p, f gh.1 • x gh.2 := rfl
 
 @[to_additive (dont_translate := R)]
 theorem smul_apply_mulAction [Group G] [MulAction G P] [Semiring R] [AddCommMonoid V]
