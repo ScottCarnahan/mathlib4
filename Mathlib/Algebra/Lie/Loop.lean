@@ -69,10 +69,16 @@ abbrev loopAlgebra := AddMonoidAlgebra R A ⊗[R] L
 namespace LoopAlgebra
 
 /-- The Lie algebra homomorphism induced by an additive map of character groups. -/
-@[simps!]
 def mapMonomialLieHom {A} {A' : Type*} [AddCommMonoid A] [AddCommMonoid A'] (f : A →+ A') :
     loopAlgebra R A L →ₗ⁅R⁆ loopAlgebra R A' L :=
   LieAlgebra.ExtendScalars.map (AddMonoidAlgebra.mapDomainAlgHom R R f) LieHom.id
+
+@[simp]
+lemma mapMonomialLieHom_single {A} {A' : Type*} [AddCommMonoid A] [AddCommMonoid A'] (f : A →+ A')
+    (r : R) (a : A) (x : L) :
+    mapMonomialLieHom R L f (AddMonoidAlgebra.single a r ⊗ₜ x) =
+      (AddMonoidAlgebra.single (f a) r ⊗ₜ x) := by
+  simp [mapMonomialLieHom]
 
 /-
 lemma mapMonomialLieHom_single {A} {A' : Type*} [AddCommMonoid A] [AddCommMonoid A'] (f : A →+ A')
@@ -97,7 +103,7 @@ lemma monomial_smul (r : R) (a : A) (x : L) : monomial R L a (r • x) = r • (
 open Classical in
 /-- A linear isomorphism to finitely supported functions. -/
 def toFinsupp : loopAlgebra R A L ≃ₗ[R] A →₀ L :=
-  TensorProduct.equivFinsuppOfBasisLeft (AddMonoidAlgebra.basis R A)
+  TensorProduct.equivFinsuppOfBasisLeft (AddMonoidAlgebra.basis A R)
 
 @[simp]
 lemma toFinsupp_symm_single (a : A) :
@@ -121,6 +127,40 @@ lemma toFinsupp_single_tmul (c : A) (z : L) (r : R) :
   ext a
   by_cases h : c = a <;> simp [toFinsupp, h, AddMonoidAlgebra.basis, AddMonoidAlgebra.single,
     LinearEquiv.refl, LinearMap.id]
+
+lemma support_toFinsupp_mapMonomialLieHom {B : Type*} [AddCommMonoid A] [AddCommMonoid B]
+    (f : B →+ A) (p : loopAlgebra R B L) {a : A}
+    (ha : a ∈ ((toFinsupp R A L) ((mapMonomialLieHom R L f) p)).support) :
+    a ∈ Set.range f := by
+  induction p using TensorProduct.induction_on with
+  | zero => simp at ha
+  | tmul x y =>
+    induction x using AddMonoidAlgebra.induction_linear with
+    | zero => simp at ha
+    | add x z h1 h2 =>
+      rw [Finsupp.mem_support_iff, TensorProduct.add_tmul, map_add, map_add,
+        Finsupp.add_apply] at ha
+      have : ((toFinsupp R A L) ((mapMonomialLieHom R L f) (x ⊗ₜ[R] y))) a ≠ 0 ∨
+          ((toFinsupp R A L) ((mapMonomialLieHom R L f) (z ⊗ₜ[R] y))) a ≠ 0 := by
+        contrapose! ha
+        rw [ha.1, ha.2, add_zero]
+      obtain (h|h) := this
+      · exact h1 (Finsupp.mem_support_iff.mpr h)
+      · exact h2 (Finsupp.mem_support_iff.mpr h)
+    | single m r =>
+      rw [Finsupp.mem_support_iff, mapMonomialLieHom_single, toFinsupp_single_tmul,
+        Finsupp.single_apply_ne_zero] at ha
+      use m
+      exact ha.1.symm
+  | add x y h1 h2 =>
+    rw [Finsupp.mem_support_iff, map_add, map_add, Finsupp.add_apply] at ha
+    have : ((toFinsupp R A L) ((mapMonomialLieHom R L f) x)) a ≠ 0 ∨
+        ((toFinsupp R A L) ((mapMonomialLieHom R L f) y)) a ≠ 0 := by
+      contrapose! ha
+      rw [ha.1, ha.2, add_zero]
+    obtain (h|h) := this
+    · exact h1 (Finsupp.mem_support_iff.mpr h)
+    · exact h2 (Finsupp.mem_support_iff.mpr h)
 
 lemma monomial_injective (a : A) : Function.Injective (monomial R L a) := by
   rw [← toFinsupp_symm_single]
@@ -497,12 +537,10 @@ lemma twoCocycle_apply_single [IsAddTorsionFree R] (Φ : LinearMap.BilinForm R L
         residuePairing_apply_apply, toFinsupp_single_tmul, Finsupp.sum]
       exact Finset.sum_eq_zero fun b hb ↦ by simp [Finsupp.single_eq_of_ne (h b hb)]
 
---Make this more general - two submonoids that don't generate nontrivial units?
-
 lemma twoCocycle_apply_apply_zero [IsAddTorsionFree R] (Φ : LinearMap.BilinForm R L)
     (hΦ : LinearMap.BilinForm.lieInvariant L Φ)
     (hΦs : LinearMap.BilinForm.IsSymm Φ) (p q : loopAlgebra R A L)
-    (hpq : ∀ a ∈ (toFinsupp R A L p).support, ∀ b ∈ (toFinsupp R A L q).support, -b ≠ a) :
+    (hpq : ∀ a ∈ (toFinsupp R A L p).support, ∀ b ∈ (toFinsupp R A L q).support, -b ≠ a ∨ a = 0) :
     ((LieAlgebra.LoopAlgebra.extension R A L Φ hΦ hΦs).twoCocycleOf
     (LieAlgebra.Extension.section_proj_leftInverse (twoCocycleOfBilinear R A L Φ hΦ hΦs))).1
     p q = 0 := by
@@ -510,10 +548,33 @@ lemma twoCocycle_apply_apply_zero [IsAddTorsionFree R] (Φ : LinearMap.BilinForm
     residuePairing_apply_apply, EmbeddingLike.map_eq_zero_iff]
   rw [Finsupp.sum_eq_zero]
   intro a ha
-  contrapose! hpq
+  have := fun b hb ↦ hpq b hb a (Finsupp.mem_support_iff.mpr ha)
+  contrapose! this
   use -a
-  exact ⟨by contrapose! hpq; simp [Finsupp.notMem_support_iff.mp hpq],
-      Exists.intro a (by simp [ha])⟩
+  exact ⟨by contrapose! this; simp [Finsupp.notMem_support_iff.mp this],
+    ⟨rfl, neg_ne_zero.mpr <| left_ne_zero_of_smul this⟩⟩
+
+--Make this more general - two submonoids that don't generate nontrivial units?
+
+lemma twoCocycle_nat [IsAddTorsionFree R] (Φ : LinearMap.BilinForm R L)
+    (hΦ : LinearMap.BilinForm.lieInvariant L Φ)
+    (hΦs : LinearMap.BilinForm.IsSymm Φ) (p q : loopAlgebra R ℕ L) :
+    ((LieAlgebra.LoopAlgebra.extension R ℤ L Φ hΦ hΦs).twoCocycleOf
+    (LieAlgebra.Extension.section_proj_leftInverse (twoCocycleOfBilinear R ℤ L Φ hΦ hΦs))).1
+    (mapMonomialLieHom R L (Nat.castAddMonoidHom ℤ) p)
+    (mapMonomialLieHom R L (Nat.castAddMonoidHom ℤ) q) = 0 := by
+  refine twoCocycle_apply_apply_zero R ℤ L Φ hΦ hΦs
+    (mapMonomialLieHom R L (Nat.castAddMonoidHom ℤ) p)
+    (mapMonomialLieHom R L (Nat.castAddMonoidHom ℤ) q) ?_
+  intro a ha b hb
+  have ha := support_toFinsupp_mapMonomialLieHom R ℤ L (Nat.castAddMonoidHom ℤ) p ha
+  obtain ⟨a', ha'⟩ := ha
+  simp only [Nat.coe_castAddMonoidHom] at ha'
+  have hb := support_toFinsupp_mapMonomialLieHom R ℤ L (Nat.castAddMonoidHom ℤ) q hb
+  obtain ⟨b', hb'⟩ := hb
+  simp only [Nat.coe_castAddMonoidHom] at hb'
+  grind
+
 
 --use LieRingModule.compLieHom
 /-
