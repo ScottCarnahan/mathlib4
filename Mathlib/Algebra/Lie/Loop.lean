@@ -6,8 +6,6 @@ Authors: Scott Carnahan
 module
 
 public import Mathlib.Algebra.Group.EvenFunction
-public import Mathlib.Algebra.Lie.BaseChange
-public import Mathlib.Algebra.Lie.Cochain
 public import Mathlib.Algebra.Lie.Extension
 public import Mathlib.Algebra.Lie.InvariantForm
 public import Mathlib.Data.Set.MulAntidiagonal
@@ -80,14 +78,6 @@ lemma mapMonomialLieHom_single {A} {A' : Type*} [AddCommMonoid A] [AddCommMonoid
       (AddMonoidAlgebra.single (f a) r ⊗ₜ x) := by
   simp [mapMonomialLieHom]
 
-/-
-lemma mapMonomialLieHom_single {A} {A' : Type*} [AddCommMonoid A] [AddCommMonoid A'] (f : A →+ A')
-    (a : A) (x : L) :
-    mapMonomialLieHom R L f (AddMonoidAlgebra.single a (1 :R) ⊗ₜ x) =
-      AddMonoidAlgebra.single (f a) (1 :R) ⊗ₜ x := by
-  simp
- -/
-
 /-- The linear map taking `x` to `T ^ n ⊗ x`. -/
 def monomial {A} (a : A) : L →ₗ[R] loopAlgebra R A L :=
   TensorProduct.mk R (AddMonoidAlgebra R A) L (AddMonoidAlgebra.single a (1 : R))
@@ -132,35 +122,26 @@ lemma support_toFinsupp_mapMonomialLieHom {B : Type*} [AddCommMonoid A] [AddComm
     (f : B →+ A) (p : loopAlgebra R B L) {a : A}
     (ha : a ∈ ((toFinsupp R A L) ((mapMonomialLieHom R L f) p)).support) :
     a ∈ Set.range f := by
+  rw [Finsupp.mem_support_iff] at ha
   induction p using TensorProduct.induction_on with
   | zero => simp at ha
   | tmul x y =>
     induction x using AddMonoidAlgebra.induction_linear with
     | zero => simp at ha
     | add x z h1 h2 =>
-      rw [Finsupp.mem_support_iff, TensorProduct.add_tmul, map_add, map_add,
-        Finsupp.add_apply] at ha
-      have : ((toFinsupp R A L) ((mapMonomialLieHom R L f) (x ⊗ₜ[R] y))) a ≠ 0 ∨
-          ((toFinsupp R A L) ((mapMonomialLieHom R L f) (z ⊗ₜ[R] y))) a ≠ 0 := by
-        contrapose! ha
-        rw [ha.1, ha.2, add_zero]
-      obtain (h|h) := this
-      · exact h1 (Finsupp.mem_support_iff.mpr h)
-      · exact h2 (Finsupp.mem_support_iff.mpr h)
+      rw [TensorProduct.add_tmul, map_add, map_add, Finsupp.add_apply] at ha
+      obtain (h|h) := ne_zero_or_ne_zero_of_add ha
+      · exact h1 h
+      · exact h2 h
     | single m r =>
-      rw [Finsupp.mem_support_iff, mapMonomialLieHom_single, toFinsupp_single_tmul,
-        Finsupp.single_apply_ne_zero] at ha
+      rw [mapMonomialLieHom_single, toFinsupp_single_tmul, Finsupp.single_apply_ne_zero] at ha
       use m
       exact ha.1.symm
   | add x y h1 h2 =>
-    rw [Finsupp.mem_support_iff, map_add, map_add, Finsupp.add_apply] at ha
-    have : ((toFinsupp R A L) ((mapMonomialLieHom R L f) x)) a ≠ 0 ∨
-        ((toFinsupp R A L) ((mapMonomialLieHom R L f) y)) a ≠ 0 := by
-      contrapose! ha
-      rw [ha.1, ha.2, add_zero]
-    obtain (h|h) := this
-    · exact h1 (Finsupp.mem_support_iff.mpr h)
-    · exact h2 (Finsupp.mem_support_iff.mpr h)
+    rw [map_add, map_add, Finsupp.add_apply] at ha
+    obtain (h|h) := ne_zero_or_ne_zero_of_add ha
+    · exact h1 h
+    · exact h2 h
 
 lemma monomial_injective (a : A) : Function.Injective (monomial R L a) := by
   rw [← toFinsupp_symm_single]
@@ -575,6 +556,70 @@ lemma twoCocycle_nat [IsAddTorsionFree R] (Φ : LinearMap.BilinForm R L)
   simp only [Nat.coe_castAddMonoidHom] at hb'
   grind
 
+/-- The linear map from `L` to the extended loop algebra taking `x` to `x ⊗ t^a`. -/
+def monomial' [IsAddTorsionFree R] (Φ : LinearMap.BilinForm R L)
+    (hΦ : LinearMap.BilinForm.lieInvariant L Φ) (hΦs : LinearMap.BilinForm.IsSymm Φ) (a : A) :
+    L →ₗ[R] (extension R A L Φ hΦ hΦs).L where
+  toFun x := ofProd (twoCocycleOfBilinear R A L Φ hΦ hΦs) (AddMonoidAlgebra.single a 1 ⊗ₜ x, 0)
+  map_add' x y := by rw [← of_add, Prod.mk_zero_add_mk_zero, ← TensorProduct.tmul_add]
+  map_smul' r x := by rw [TensorProduct.tmul_smul, RingHom.id_apply, ← of_smul, Prod.smul_mk_zero]
+
+@[simp]
+lemma proj_monomial' [IsAddTorsionFree R] (Φ : LinearMap.BilinForm R L)
+    (hΦ : LinearMap.BilinForm.lieInvariant L Φ) (hΦs : LinearMap.BilinForm.IsSymm Φ) (a : A)
+    (x : L) :
+    (extension R A L Φ hΦ hΦs).proj ((monomial' R A L Φ hΦ hΦs a) x) =
+      (AddMonoidAlgebra.single a (1 : R) ⊗ₜ x):=
+  rfl
+
+-- Introduce `A`-grading before the derivation - Any grading yields a derivation.
+/-
+open Finsupp Pointwise in
+/-- The energy derivation on the centrally extended Lie algebra, that scalar-multiplies an
+`A`-graded vector by its grading. -/
+def energy [IsAddTorsionFree R] (Φ : LinearMap.BilinForm R L)
+    (hΦ : LinearMap.BilinForm.lieInvariant L Φ) (hΦs : LinearMap.BilinForm.IsSymm Φ) :
+    LieDerivation R (extension R A L Φ hΦ hΦs).L (extension R A L Φ hΦ hΦs).L :=
+    letI F := ((toFinsupp R A L) ∘ₗ (extension R A L Φ hΦ hΦs).proj.toLinearMap :
+      (extension R A L Φ hΦ hΦs).L →ₗ[R] (A →₀ L))
+    { toFun g := (F g).sum fun a v ↦ (a • (1 : R)) • (monomial' R A L Φ hΦ hΦs a) v
+      map_add' x y := by
+        classical
+        let u : Finset A := (F x).support ∪ (F y).support
+        have hu₁ : (F x).support ⊆ u := Finset.subset_union_left
+        have hu₂ : (F y).support ⊆ u := Finset.subset_union_right
+        have hu₃ : (F (x + y)).support ⊆ u := fun a ha ↦ by
+          replace ha : F x a + F y a ≠ 0 := by simpa using ha
+          obtain (h|h) := ne_zero_or_ne_zero_of_add ha
+          · exact hu₁ <| mem_support_iff.mpr h
+          · exact hu₂ <| mem_support_iff.mpr h
+        rw [sum_of_support_subset _ hu₃ _ (fun _ _ ↦ by rw [map_zero, smul_zero]),
+          sum_of_support_subset _ hu₁ _ (fun _ _ ↦ by rw [map_zero, smul_zero]),
+          sum_of_support_subset _ hu₂ _ (fun _ _ ↦ by rw [map_zero, smul_zero])]
+        simp [map_add, Finset.sum_add_distrib, u]
+      map_smul' r x := by
+        rw [map_smul, sum_of_support_subset _ support_smul _
+          (fun _ _ ↦ by rw [map_zero, smul_zero]), sum, Finset.smul_sum]
+        exact Finset.sum_congr rfl fun _ _ ↦ by simp [smul_algebra_smul_comm r]
+      leibniz' x y := by
+        classical
+        let u : Finset A := (F x).support + (F y).support ∪ {0}
+        have hu : (F ⁅x, y⁆).support ⊆ u := by
+          intro b hb
+          simp only [Finset.union_singleton, Finset.mem_insert, u]
+          contrapose! hb
+          simp only [LinearMap.coe_comp, LinearEquiv.coe_coe, LieHom.coe_toLinearMap,
+            Function.comp_apply, LieHom.map_lie, mem_support_iff, Decidable.not_not, F]
+
+
+        simp only [monomial'_apply, LinearMap.coe_mk, AddHom.coe_mk]
+
+        sorry
+      }
+-/
+
+
+-- smooth rep : U(positive part)v finite dimensional for all v.
 
 --use LieRingModule.compLieHom
 /-
