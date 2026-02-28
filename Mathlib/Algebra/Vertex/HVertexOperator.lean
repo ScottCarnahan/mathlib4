@@ -711,6 +711,7 @@ def equivDomain :
     (LinearEquiv.congrSemilinear (R := R) (M := U₀) (R₂ := HahnSeries Γ' R)
       (M₂ := HVertexOperator Γ₁' R V W) (σ₂ := HahnSeries.C) (by simp)).symm
 
+set_option backward.isDefEq.respectTransparency false in
 @[simp]
 theorem equivDomain_apply_apply (Y : HStateFieldMap Γ₁ R U₀ V W) (u : U₀) (v : V) :
     equivDomain Γ R U₀ V W f f₁ Y u v =
@@ -718,6 +719,7 @@ theorem equivDomain_apply_apply (Y : HStateFieldMap Γ₁ R U₀ V W) (u : U₀)
   dsimp [equivDomain]
   erw [HVertexOperator.equivDomainSemi_apply_apply]
 
+set_option backward.isDefEq.respectTransparency false in
 @[simp]
 theorem equivDomain_symm_apply_apply (Y : HStateFieldMap Γ₁' R U₀ V W) (u : U₀) (v : V) :
     (equivDomain Γ R U₀ V W f f₁).symm Y u v =

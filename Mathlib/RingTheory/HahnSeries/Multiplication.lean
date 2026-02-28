@@ -350,12 +350,7 @@ theorem add_smul [AddCommMonoid R] [SMulWithZero R V] {x y : R⟦Γ⟧}
     rw [coeff_smul_left hwf Set.subset_union_right,
       coeff_smul_left hwf Set.subset_union_left]
     simp only [sum_add_distrib]
-  · intro b
-    simp_all only [Set.isPWO_union, HahnSeries.isPWO_support, and_self, HahnSeries.mem_support,
-      HahnSeries.coeff_add, ne_eq, Set.mem_union]
-    contrapose!
-    intro h
-    rw [h.1, h.2, add_zero]
+  · exact support_add_subset _ _
 
 theorem coeff_single_smul_vadd [MulZeroClass R] [SMulWithZero R V] {r : R} {x : HahnModule Γ' R V}
     {a : Γ'} {b : Γ} :
@@ -427,6 +422,7 @@ theorem support_smul_subset_vadd_support [MulZeroClass R] [SMulWithZero R V] {x 
     ((of R).symm (x • y)).support ⊆ x.support +ᵥ ((of R).symm y).support := by
   exact support_smul_subset_vadd_support'
 
+set_option backward.isDefEq.respectTransparency false in
 theorem orderTop_vAdd_le_orderTop_smul {Γ Γ'} [LinearOrder Γ] [LinearOrder Γ'] [VAdd Γ Γ']
     [IsOrderedCancelVAdd Γ Γ'] [MulZeroClass R] [SMulWithZero R V] {x : R⟦Γ⟧}
     [VAdd (WithTop Γ) (WithTop Γ')] {y : HahnModule Γ' R V}
@@ -640,18 +636,7 @@ theorem orderTop_mul (x y : R⟦Γ⟧) [NoZeroDivisors R] :
 
 theorem orderTop_add_le_mul {x y : R⟦Γ⟧} : x.orderTop + y.orderTop ≤ (x * y).orderTop := by
   rw [← smul_eq_mul]
-  exact HahnModule.orderTop_vAdd_le_orderTop_smul fun γ γ' ↦ rfl
-
-theorem order_add_le_mul {x y : HahnSeries Γ R} (hxy : x * y ≠ 0) :
-    x.order + y.order ≤ (x * y).order := by
-  refine WithTop.coe_le_coe.mp ?_
-  rw [WithTop.coe_add, order_eq_orderTop_of_ne_zero (ne_zero_and_ne_zero_of_mul hxy).1,
-    order_eq_orderTop_of_ne_zero (ne_zero_and_ne_zero_of_mul hxy).2,
-    order_eq_orderTop_of_ne_zero hxy]
-  exact orderTop_add_le_mul
-
-@[deprecated (since := "2025-08-11")] alias orderTop_add_orderTop_le_orderTop_mul :=
-  orderTop_add_le_mul
+  exact HahnModule.orderTop_vAdd_le_orderTop_smul fun i j ↦ rfl
 
 theorem order_mul_of_ne_zero {x y : R⟦Γ⟧}
     (h : x.leadingCoeff * y.leadingCoeff ≠ 0) : (x * y).order = x.order + y.order := by
@@ -745,6 +730,7 @@ theorem orderTop_pow_of_nonzero {Γ} [AddCommMonoid Γ] [LinearOrder Γ] [IsOrde
     rw [pow_succ, orderTop_mul_of_ne_zero (leadingCoeff_pow_of_ne_zero (left_ne_zero_of_mul h) ▸ h),
       ih, succ_nsmul]
 
+set_option backward.isDefEq.respectTransparency false in
 theorem orderTop_nsmul_le_orderTop_pow {Γ} [AddCommMonoid Γ] [LinearOrder Γ]
     [IsOrderedCancelAddMonoid Γ] [Semiring R] {x : R⟦Γ⟧} {n : ℕ} :
     n • x.orderTop ≤ (x ^ n).orderTop := by
@@ -818,11 +804,13 @@ theorem orderTop_self_sub_one_pos_iff [LinearOrder Γ] [Zero Γ] [NonAssocRing R
       orderTop_sub_ne h.1 orderTop_one ?_
     rw [h.2, leadingCoeff_one]
 
+set_option backward.isDefEq.respectTransparency false in
 theorem orderTop_sub_pos [PartialOrder Γ] [Zero Γ] [AddCommGroup R] [One R] {g : Γ} (hg : 0 < g)
     (r : R) :
     0 < ((1 + single g r) - 1).orderTop := by
   by_cases hr : r = 0 <;> simp [hr, hg]
 
+set_option backward.isDefEq.respectTransparency false in
 /-- The group of invertible Hahn series close to 1, i.e., those series such that subtracting 1
   yields a series with strictly positive `orderTop`. -/
 def orderTopSubOnePos (Γ R) [LinearOrder Γ] [AddCommMonoid Γ] [IsOrderedCancelAddMonoid Γ]
@@ -983,6 +971,7 @@ def leftTensorMap [CommSemiring R] [AddCommMonoid U] [Module R V] [Module R U] :
       intro r y
       ext; simp [smul_tmul'] }
 
+set_option backward.isDefEq.respectTransparency false in
 instance instIsTorsionFree {Γ V : Type*} [Ring R] [IsDomain R] [AddCommGroup V] [AddCommMonoid Γ]
     [LinearOrder Γ] [IsOrderedCancelAddMonoid Γ] [Module R V] [Module.IsTorsionFree R V] :
     Module.IsTorsionFree R⟦Γ⟧ (HahnModule Γ R V) :=
