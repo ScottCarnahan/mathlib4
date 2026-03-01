@@ -8,6 +8,7 @@ module
 public import Mathlib.Algebra.Group.EvenFunction
 public import Mathlib.Algebra.Lie.Extension
 public import Mathlib.Algebra.Lie.InvariantForm
+public import Mathlib.Algebra.Polynomial.Laurent
 public import Mathlib.Data.Set.MulAntidiagonal
 
 /-!

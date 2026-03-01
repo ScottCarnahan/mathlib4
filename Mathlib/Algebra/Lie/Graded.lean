@@ -6,7 +6,7 @@ Authors: Scott Carnahan
 module
 
 public import Mathlib.Algebra.DirectSum.Decomposition
-public import Mathlib.Algebra.Lie.Basic
+public import Mathlib.Algebra.Lie.Derivation.Basic
 
 /-!
 # Internally-graded Lie algebras
@@ -52,35 +52,7 @@ class GBracket [Add ι] where
     the `leibniz_lie` rule for graded Lie algebras would then require a cast. -/
   bracket {i j k} (h : i + j = k) : A i → A j → A k
 
-/-- A type alias of sigma types for graded monoids. -/
-def GradedBracket :=
-  Sigma A
-
-namespace GradedBracket
-
-/-- Construct an element of a graded monoid. -/
-def mk {A : ι → Type*} : ∀ i, A i → GradedBracket A :=
-  Sigma.mk
-
-/-- `GBracket` implies `Bracket (GradedMonoid A)`. -/
-instance GBracket.toBracket [Add ι] [GBracket A] : Bracket (GradedBracket A) (GradedBracket A) :=
-  ⟨fun x y : GradedBracket A => ⟨_, GBracket.bracket rfl x.snd y.snd⟩⟩
-
-@[simp] theorem fst_bracket [Add ι] [GBracket A] (x y : GradedBracket A) :
-    ⁅x, y⁆.fst = x.fst + y.fst := rfl
-
-@[simp] theorem snd_bracket [Add ι] [GBracket A] (x y : GradedBracket A) :
-    ⁅x, y⁆.snd = GBracket.bracket rfl x.snd y.snd := rfl
-
-theorem mk_bracket_mk [Add ι] [GBracket A] {i j} (a : A i) (b : A j) :
-    ⁅mk i a, mk j b⁆ = mk (i + j) (GBracket.bracket rfl a b) :=
-  rfl
-
-/-- A version of `GradedMonoid.ghas_one` for internally graded objects. -/
-class SetLike.GradedBracket {L} {S : Type*} [SetLike S L] [Bracket L L] [Add ι] (A : ι → S) :
-    Prop where
-  /-- Bracket is homogeneous -/
-  mul_mem : ∀ ⦃i j⦄ {gi gj}, gi ∈ A i → gj ∈ A j → ⁅gi, gj⁆ ∈ A (i + j)
+namespace DirectSum
 
 /-- A graded version of `LieRing`. -/
 class GLieRing [AddCommMonoid ι] [∀ i, AddCommGroup (A i)] extends GBracket A where
@@ -161,41 +133,11 @@ lemma bracketHom_single_apply [DecidableEq ι] [AddCommMonoid ι] [∀ i, AddCom
     have (k : ι) (c : A k) : DFinsupp.single k c = of A k c := DFinsupp.ext (congrFun rfl)
     simp [this]
 
-private lemma bracketHom_lie_single_single [DecidableEq ι] [AddCommMonoid ι]
-    [∀ i, AddCommGroup (A i)] [GLieRing A] (i j : ι) (a : A i) (b : A j) (z : (⨁ i, A i)) :
-    ((bracketHom A) (DFinsupp.single i a)) (((bracketHom A) (DFinsupp.single j b)) z) =
-      ((bracketHom A) (DFinsupp.single j b)) (((bracketHom A) (DFinsupp.single i a)) z) +
-      ((bracketHom A) (((bracketHom A) (DFinsupp.single i a)) (DFinsupp.single j b))) z := by
-  induction z using DFinsupp.induction with
-  | h0 => simp
-  | ha k c f _ _ ih =>
-    have (k : ι) (c : A k) : DFinsupp.single k c = of A k c := DFinsupp.ext (congrFun rfl)
-    simp only [map_add, ih, ← add_assoc, add_left_inj]
-    rw [add_right_comm, add_right_cancel_iff]
-    simp only [this, toAddMonoid_of, AddMonoidHom.flip_apply, AddMonoidHom.coe_comp,
-      Function.comp_apply, AddMonoidHom.compHom_apply_apply, gBracketHom_apply_apply]
-    ext l
-    by_cases h : i + j + k = l
-    · simp [of_apply, h, add_assoc i j k ▸ h, add_assoc j i k ▸ add_comm i j ▸ h, rec_bracket,
-        GLieRing.leibniz_lie, add_comm (GBracket.bracket _ (GBracket.bracket _ a b) c)]
-    · simp [of_apply, h, add_assoc i j k ▸ h, add_assoc j i k ▸ add_comm i j ▸ h]
-
-private lemma bracketHom_lie_single [DecidableEq ι] [AddCommMonoid ι] [∀ i, AddCommGroup (A i)]
-    [GLieRing A] (i : ι) (a : A i) (y z : (⨁ i, A i)) :
-    ((bracketHom A) (DFinsupp.single i a)) (((bracketHom A) y) z) =
-      ((bracketHom A) y) (((bracketHom A) (DFinsupp.single i a)) z) +
-      ((bracketHom A) (((bracketHom A) (DFinsupp.single i a)) y)) z := by
-  induction y using DFinsupp.induction with
-  | h0 => simp
-  | ha j b f _ _ ih =>
-    simp only [map_add, AddMonoidHom.add_apply, ih, ← add_assoc]
-    rw [add_right_cancel_iff, add_right_comm, add_right_cancel_iff]
-    exact bracketHom_lie_single_single A i j a b z
-
 instance instBracket [DecidableEq ι] [AddCommMonoid ι] [∀ i, AddCommGroup (A i)] [GLieRing A] :
     Bracket (⨁ i, A i) (⨁ i, A i) where
   bracket := fun a b => bracketHom A a b
 
+/-- `GLieRing` implies a Lie ring structure. -/
 instance GLieRing.toLieRing [DecidableEq ι] [AddCommMonoid ι] [∀ i, AddCommGroup (A i)]
     [GLieRing A] :
     LieRing (⨁ i, A i) :=
@@ -267,7 +209,7 @@ identity. Forgetting the scalar multiplication, every Lie algebra is a Lie ring.
   protected lie_smul : ∀ (t : R) {i j k} (h : i + j = k) (x : A i) (y : A j),
     bracket h x (t • y) = t • bracket h x y
 
-/-- `GMonoid` implies a `Monoid (GradedMonoid A)`. -/
+/-- `GLieAlgebra` implies a Lie algebra structure. -/
 instance GLieAlgebra.toLieAlgebra [DecidableEq ι] [AddCommMonoid ι] [∀ i, AddCommGroup (A i)]
     [∀ i, Module R (A i)] [GLieAlgebra R A] : LieAlgebra R (⨁ i, A i) where
   lie_smul r x y := by
@@ -285,20 +227,53 @@ instance GLieAlgebra.toLieAlgebra [DecidableEq ι] [AddCommMonoid ι] [∀ i, Ad
       simp only [add_lie, ih, smul_add, add_left_inj]
       exact this i b
 
-/-- An internally-graded `R`-Lie algebra `L` is one that can be decomposed into a collection
-of `Submodule R L`s indexed by `ι` such that the canonical map `L → ⨁ i, ℒ i` is bijective and
-respects multiplication, i.e. the bracket of an element of degree `i` and an element of degree `j`
-is an element of degree `i + j`.
+-- Internal grading?
+/-
+/-- A type alias of sigma types for graded monoids. -/
+def GradedBracket :=
+  Sigma A
 
-Note that the fact that `L` is internally-graded, `GradedAlgebra ℒ`, implies an externally-graded
-algebra structure `GradedBracket.GLieAlgebra R (fun i ↦ ↥(ℒ i))`, which in turn makes available a
-`LieAlgebra R (⨁ i, ℒ i)` instance.
+namespace GradedBracket
+
+/-- Construct an element of a graded monoid. -/
+def mk {A : ι → Type*} : ∀ i, A i → GradedBracket A :=
+  Sigma.mk
+
+/-- `GBracket` implies `Bracket (GradedMonoid A)`. -/
+instance GBracket.toBracket [Add ι] [GBracket A] : Bracket (GradedBracket A) (GradedBracket A) :=
+  ⟨fun x y : GradedBracket A => ⟨_, GBracket.bracket rfl x.snd y.snd⟩⟩
+
+@[simp] theorem fst_bracket [Add ι] [GBracket A] (x y : GradedBracket A) :
+    ⁅x, y⁆.fst = x.fst + y.fst := rfl
+
+@[simp] theorem snd_bracket [Add ι] [GBracket A] (x y : GradedBracket A) :
+    ⁅x, y⁆.snd = GBracket.bracket rfl x.snd y.snd := rfl
+
+theorem mk_bracket_mk [Add ι] [GBracket A] {i j} (a : A i) (b : A j) :
+    ⁅mk i a, mk j b⁆ = mk (i + j) (GBracket.bracket rfl a b) :=
+  rfl
+
+/-- A version of `GradedMonoid.ghas_one` for internally graded objects. -/
+class SetLike.GradedBracket {L} {S : Type*} [SetLike S L] [Bracket L L] [Add ι] (A : ι → S) :
+    Prop where
+  /-- Bracket is homogeneous -/
+  mul_mem : ∀ ⦃i j⦄ {gi gj}, gi ∈ A i → gj ∈ A j → ⁅gi, gj⁆ ∈ A (i + j)
 -/
-class GradedLieRing [Add ι] [DecidableEq ι] (ℒ : ι → σ) extends
-    SetLike.GradedBracket ℒ, DirectSum.Decomposition ℒ
 
-variable [AddCommMonoid ι] [DecidableEq ι] [GradedLieRing ℒ]
+end DirectSum
 
--- Add derivations from grading?
+namespace LieDerivation
 
-end GradedBracket
+/-
+def ofGrading [DecidableEq ι] [CommSemiring ι] [∀ i, AddCommGroup (A i)] [∀ i, Module ι (A i)]
+    [∀ i, Module R (A i)] [GLieAlgebra R A] [∀ i, SMulCommClass ι R (A i)] :
+    LieDerivation R (⨁ i, A i) (⨁ i, A i) :=
+  { __ := (DirectSum.toModule R ι (⨁ i, A i)
+    fun i ↦ (DirectSum.lof R ι A i).comp (DistribSMul.toLinearMap R _ i))
+    leibniz' x y := by
+      ext i
+      simp
+      sorry }
+-/
+
+end LieDerivation

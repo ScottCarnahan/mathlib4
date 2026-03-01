@@ -638,6 +638,14 @@ theorem orderTop_add_le_mul {x y : R⟦Γ⟧} : x.orderTop + y.orderTop ≤ (x *
   rw [← smul_eq_mul]
   exact HahnModule.orderTop_vAdd_le_orderTop_smul fun i j ↦ rfl
 
+theorem order_add_le_mul {x y : HahnSeries Γ R} (hxy : x * y ≠ 0) :
+    x.order + y.order ≤ (x * y).order := by
+  refine WithTop.coe_le_coe.mp ?_
+  rw [WithTop.coe_add, order_eq_orderTop_of_ne_zero (ne_zero_and_ne_zero_of_mul hxy).1,
+    order_eq_orderTop_of_ne_zero (ne_zero_and_ne_zero_of_mul hxy).2,
+    order_eq_orderTop_of_ne_zero hxy]
+  exact orderTop_add_le_mul
+
 theorem order_mul_of_ne_zero {x y : R⟦Γ⟧}
     (h : x.leadingCoeff * y.leadingCoeff ≠ 0) : (x * y).order = x.order + y.order := by
   have hx : x.leadingCoeff ≠ 0 := by aesop
